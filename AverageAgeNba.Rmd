@@ -46,7 +46,8 @@ PullLinksMissing = Per36 %>%
   rowwise() %>% 
   mutate(Exist = url.exists(FullURL)) %>% 
   ungroup() %>% 
-  mutate(ShortenURL = stringi::stri_replace_all_fixed(FullURL, "http://www.basketball-reference.com", "")) %>% 
+  mutate(ShortenURL = stringi::stri_replace_all_fixed(FullURL, 
+                                                      "http://www.basketball-reference.com", "")) %>% 
   mutate(PlayerInfo = purrr::map( ShortenURL,  NBAPlayerPerGameStats) ) %>% 
   select(player,link=ShortenURL, PlayerInfo)
 
@@ -64,7 +65,7 @@ PullLinksCompl = Per36 %>%
 ```
 
 
-The first step is to pull all player data for these years. We use the function `NBAPerGameStatisticsPer36Min`, and only keep the distinct player names and links. In the dataset, there is a variable called `link`, which provides the link to that player on Basketball Reference. 
+The first step is to pull all player data for these years. We use the function `NBAPerGameStatisticsPer36Min`, and only keep the distinct player names and links. In the dataset, there is a variable called `link`, which provides the URL to that player on Basketball Reference. 
 
 Note, there are some players who do not have a link. After googling, and using some intuition, I realized the players were all hall of famers. The asterisks in the underlying data break the link function from the `ballr` package. 
 
@@ -99,7 +100,7 @@ Now that we have the data, we can look at the average length of a career, averag
 
 ```{r lengthofcareer}
 
-AllPlayers = dget("CompleteDataSet") %>% 
+AllPlayers = dget("Data/CompleteDataSet") %>% 
   filter( 
     !is.na(age) & tm != "TOT" 
     ) %>% 
@@ -259,9 +260,12 @@ PltRestOfVarsNotCurrent = Minutes %>%
 PltRestOfVars
 ```
 
+Including, or excluding current players does not change the distribution in particular. 
 
 ```{r PltOtherVarsNtCurr}
 PltRestOfVarsNotCurrent
 ```
 
+## Summary
 
+Overall, the `ballr` package is intuitive to use, and using a couple of functions together can provide a powerful mechanism to pull lots of career data from Basketball-Reference. 

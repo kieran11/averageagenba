@@ -31,7 +31,8 @@ PullLinksMissing = Per36 %>%
   rowwise() %>% 
   mutate(Exist = url.exists(FullURL)) %>% 
   ungroup() %>% 
-  mutate(ShortenURL = stringi::stri_replace_all_fixed(FullURL, "http://www.basketball-reference.com", "")) %>% 
+  mutate(ShortenURL = stringi::stri_replace_all_fixed(FullURL, 
+                                                      "http://www.basketball-reference.com", "")) %>% 
   mutate(PlayerInfo = purrr::map( ShortenURL,  NBAPlayerPerGameStats) ) %>% 
   select(player,link=ShortenURL, PlayerInfo)
 
@@ -48,7 +49,7 @@ PullLinksCompl = Per36 %>%
 The first step is to pull all player data for these years. We use the
 function `NBAPerGameStatisticsPer36Min`, and only keep the distinct
 player names and links. In the dataset, there is a variable called
-`link`, which provides the link to that player on Basketball Reference.
+`link`, which provides the URL to that player on Basketball Reference.
 
 Note, there are some players who do not have a link. After googling, and
 using some intuition, I realized the players were all hall of famers.
@@ -133,4 +134,13 @@ poor performance.
 
 ![](AverageAgeNba_files/figure-gfm/PltOtherVars-1.png)<!-- -->
 
+Including, or excluding current players does not change the distribution
+in particular.
+
 ![](AverageAgeNba_files/figure-gfm/PltOtherVarsNtCurr-1.png)<!-- -->
+
+## Summary
+
+Overall, the `ballr` package is intuitive to use, and using a couple of
+functions together can provide a powerful mechanism to pull lots of
+career data from Basketball-Reference.
