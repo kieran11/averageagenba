@@ -1,0 +1,90 @@
+---
+title: "Grab All Team Names"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+```
+
+## Pull Team Names
+
+
+```{r cars}
+
+library(tidyverse)
+library(rvest)
+library(zoo)
+
+ExtraSeasons = tibble(dt = paste0(seq(1980, 1984, 1), "0501"),
+                      season = paste0(as.numeric(stringi::stri_sub(dt, 1, 4)), "-", 
+                                      stringi::stri_sub(dt, 3,4))) 
+
+Seasons_a =  dget("Data/CompleteDataSet") %>% 
+  group_by(link) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  count(season) %>% 
+  mutate(dt = case_when(stringi::stri_sub(season, -2) == "00" ~ "20000501",
+                        TRUE ~
+                          paste0(stringi::stri_sub(season, 1,2) , stringi::stri_sub(season,-2), "0501"))) %>%
+  bind_rows(ExtraSeasons) %>% 
+  mutate(SeasonResults = purrr::map(dt, ~ballr::NBAStandingsByDate(.x) %>% 
+                                      bind_rows(.))  )
+
+Seasons = Seasons_a %>% 
+  tidyr::unnest(c(SeasonResults)) %>%
+  mutate(team_nm = ifelse(is.na(eastern_conference) , western_conference, eastern_conference ) %>% 
+           stringi::stri_replace_all_fixed(., "*", "")) %>%
+  select(season, dt, team_nm ,w, l, w_lpercent ) %>% 
+  filter(w != "NA") %>% 
+  mutate(Words = stringr::str_count(team_nm,  "\\S+"),
+         Acronym =  case_when(Words == 2 ~ stringi::stri_sub(team_nm, 1,3) %>% toupper(.),
+                             TRUE ~ stringi::stri_replace_all_regex(team_nm, "[^[:UPPER:]]", "")),
+         Acronym = case_when( Acronym == "VAN" ~ "MEM",
+                        Acronym %in% c( "SEA", "OCT") ~ "OKC",
+                        Acronym %in% c("NOOCH", "NOH") ~ "CHA",
+                        Acronym == "SDC" ~ "LAC",
+                        Acronym == "PTB" ~ "POR",
+                        Acronym == "KCK" ~ "SAC",
+                        TRUE ~ Acronym))
+  
+RollingMean = Seasons %>% 
+  select(season, w, w_lpercent, Acronym) %>% 
+  arrange(Acronym, season) %>% 
+  group_by(Acronym) %>% 
+  mutate(lag_w = lag(w),
+         lag_w_lpercent = lag(w_lpercent),
+         wprev = rollapply(data = lag_w, 
+                            width = 5, 
+                            FUN = mean, 
+                            align = "right", 
+                            fill = NA, 
+                            na.rm = T),
+         w_lpercentprev = rollapply(data = lag_w_lpercent, 
+                            width = 5, 
+                            FUN = mean, 
+                            align = "right", 
+                            fill = NA, 
+                            na.rm = T),
+         wcur = rollapply(data = w, 
+                            width = 5, 
+                            FUN = mean, 
+                            align = "right", 
+                            fill = NA, 
+                            na.rm = T),
+         w_lpercentcur = rollapply(data = w_lpercent, 
+                            width = 5, 
+                            FUN = mean, 
+                            align = "right", 
+                            fill = NA, 
+                            na.rm = T))%>% 
+  ungroup() 
+
+dput(RollingMean, "Data/SeasonDataSet")
+
+
+```
+

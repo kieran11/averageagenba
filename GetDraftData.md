@@ -46,7 +46,7 @@ the famous 1984 NBA draft.
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#gimgloitxo .gt_table {
+#nqvufmriio .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -69,7 +69,7 @@ the famous 1984 NBA draft.
   border-left-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_heading {
+#nqvufmriio .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -81,7 +81,7 @@ the famous 1984 NBA draft.
   border-right-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_title {
+#nqvufmriio .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -91,7 +91,7 @@ the famous 1984 NBA draft.
   border-bottom-width: 0;
 }
 
-#gimgloitxo .gt_subtitle {
+#nqvufmriio .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -101,13 +101,13 @@ the famous 1984 NBA draft.
   border-top-width: 0;
 }
 
-#gimgloitxo .gt_bottom_border {
+#nqvufmriio .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_col_headings {
+#nqvufmriio .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -122,7 +122,7 @@ the famous 1984 NBA draft.
   border-right-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_col_heading {
+#nqvufmriio .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -142,7 +142,7 @@ the famous 1984 NBA draft.
   overflow-x: hidden;
 }
 
-#gimgloitxo .gt_column_spanner_outer {
+#nqvufmriio .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -154,15 +154,15 @@ the famous 1984 NBA draft.
   padding-right: 4px;
 }
 
-#gimgloitxo .gt_column_spanner_outer:first-child {
+#nqvufmriio .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#gimgloitxo .gt_column_spanner_outer:last-child {
+#nqvufmriio .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#gimgloitxo .gt_column_spanner {
+#nqvufmriio .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -174,7 +174,7 @@ the famous 1984 NBA draft.
   width: 100%;
 }
 
-#gimgloitxo .gt_group_heading {
+#nqvufmriio .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -196,7 +196,7 @@ the famous 1984 NBA draft.
   vertical-align: middle;
 }
 
-#gimgloitxo .gt_empty_group_heading {
+#nqvufmriio .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -211,19 +211,19 @@ the famous 1984 NBA draft.
   vertical-align: middle;
 }
 
-#gimgloitxo .gt_striped {
+#nqvufmriio .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#gimgloitxo .gt_from_md > :first-child {
+#nqvufmriio .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#gimgloitxo .gt_from_md > :last-child {
+#nqvufmriio .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#gimgloitxo .gt_row {
+#nqvufmriio .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -242,7 +242,7 @@ the famous 1984 NBA draft.
   overflow-x: hidden;
 }
 
-#gimgloitxo .gt_stub {
+#nqvufmriio .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -254,7 +254,7 @@ the famous 1984 NBA draft.
   padding-left: 12px;
 }
 
-#gimgloitxo .gt_summary_row {
+#nqvufmriio .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -264,7 +264,7 @@ the famous 1984 NBA draft.
   padding-right: 5px;
 }
 
-#gimgloitxo .gt_first_summary_row {
+#nqvufmriio .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -274,7 +274,7 @@ the famous 1984 NBA draft.
   border-top-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_grand_summary_row {
+#nqvufmriio .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -284,7 +284,7 @@ the famous 1984 NBA draft.
   padding-right: 5px;
 }
 
-#gimgloitxo .gt_first_grand_summary_row {
+#nqvufmriio .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -294,7 +294,7 @@ the famous 1984 NBA draft.
   border-top-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_table_body {
+#nqvufmriio .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -303,7 +303,7 @@ the famous 1984 NBA draft.
   border-bottom-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_footnotes {
+#nqvufmriio .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -317,13 +317,13 @@ the famous 1984 NBA draft.
   border-right-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_footnote {
+#nqvufmriio .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#gimgloitxo .gt_sourcenotes {
+#nqvufmriio .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -337,47 +337,47 @@ the famous 1984 NBA draft.
   border-right-color: #D3D3D3;
 }
 
-#gimgloitxo .gt_sourcenote {
+#nqvufmriio .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#gimgloitxo .gt_left {
+#nqvufmriio .gt_left {
   text-align: left;
 }
 
-#gimgloitxo .gt_center {
+#nqvufmriio .gt_center {
   text-align: center;
 }
 
-#gimgloitxo .gt_right {
+#nqvufmriio .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#gimgloitxo .gt_font_normal {
+#nqvufmriio .gt_font_normal {
   font-weight: normal;
 }
 
-#gimgloitxo .gt_font_bold {
+#nqvufmriio .gt_font_bold {
   font-weight: bold;
 }
 
-#gimgloitxo .gt_font_italic {
+#nqvufmriio .gt_font_italic {
   font-style: italic;
 }
 
-#gimgloitxo .gt_super {
+#nqvufmriio .gt_super {
   font-size: 65%;
 }
 
-#gimgloitxo .gt_footnote_marks {
+#nqvufmriio .gt_footnote_marks {
   font-style: italic;
   font-size: 65%;
 }
 </style>
 
-<div id="gimgloitxo" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="nqvufmriio" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
 
 <table class="gt_table">
 

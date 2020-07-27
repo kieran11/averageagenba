@@ -1,0 +1,464 @@
+---
+title: "Survival Analysis"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+
+
+
+
+```{r packages}
+
+library(survival)
+library(dplyr)
+library(ggplot2)
+library(survminer)
+library(gt)
+
+```
+
+
+The two previous posts have described the data available. This post will look to survival analysis to assess time until the end of a NBA career. 
+
+The first plot looks at the Kaplan Meier curves for both minutes played and seasons played by position. 
+
+```{r KaplanMeir}
+
+AllPlayers = dget("Data/CompleteDataSet") %>% 
+  filter( 
+    !is.na(age) & tm != "TOT" 
+    ) %>% 
+  group_by(link) %>% 
+  mutate(SeasonNumber_1 = row_number() ) %>% 
+  ungroup() %>% 
+  group_by(link, season) %>% 
+  mutate(SeasonNumberAdj =   row_number() -1) %>% 
+  ungroup() %>% 
+  group_by(link) %>% 
+  mutate(CumSumSeasonAdj = cumsum(SeasonNumberAdj)) %>% 
+  ungroup() %>% 
+  mutate(SeasonNumber = SeasonNumber_1 - CumSumSeasonAdj)
+
+Positions = AllPlayers %>% 
+  count(link, pos) %>% 
+  arrange(link, desc(n) ) %>% 
+  group_by(link) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup()
+
+Minutes = AllPlayers %>% 
+  mutate(MinutesPlayed = mp * g) %>% 
+  group_by(link) %>% 
+  summarise(mp = sum(MinutesPlayed, na.rm = TRUE) ,
+            games = sum(g, na.rm = TRUE),
+            games_started = sum(gs, na.rm = TRUE),
+            NumberOfSeasons = max(SeasonNumber, na.rm = TRUE)) %>% 
+  ungroup() %>%  
+  inner_join(AllPlayers %>% 
+               select(link, season) %>% 
+               group_by(link) %>% 
+               filter(row_number() == n()) %>% 
+               ungroup(), by = "link") %>% 
+  mutate(status = case_when(season == "2019-20" ~ 1, TRUE ~ 2)) %>% 
+  inner_join(Positions , by = "link")
+
+
+```
+
+As we can see, there is not a considerable difference between positions for the minutes played Kaplan-Meier curve. 
+
+```{r CurvesMP}
+
+fit <- survfit(Surv(Minutes$mp, Minutes$status) ~ pos , data = Minutes)
+ggsurvplot(fit, data = Minutes) 
+
+```
+
+Next, we look at the seasons played: 
+
+```{r SeasonsPlayedKM}
+
+
+fitSeasons <- survfit(Surv(Minutes$NumberOfSeasons, Minutes$status) ~ pos , data = Minutes)
+ggsurvplot(fitSeasons, data = Minutes) 
+
+```
+
+The green and blue curves are higher than the other three curves. This suggests that players classified as small forward, and point guard have longer careers. 
+
+While both metrics are interesting, minutes played better describes a players career arc. The following analysis will look at minutes played. 
+
+## Cox Proportional Hazard: 
+
+The next step is to develop a regression model. We model hazard ratios. 
+
+With Basketball-Reference, there are basically infinite combinations of models we could consider. One method of to develop this model could be to put all the possible factors that influence time until retirement, and use a lasso regression to determine which variables are best. However, there are problems with consistency with lasso regressions, see [here](https://stats.stackexchange.com/questions/348320/consistency-of-lasso):
+
+Finally, we could use institutional knowledge. Institutional knowledge of how the Data Generated Process works allows us to use knowledge in an area to model a process. In this case, we understand that players who are better, get longer contracts, and can usually play longer as their skills atrophy. 
+
+## Data
+
+To model minutes, we will do so based on the players first season. We are not interested in how a given player performs in their fifth year, but rather, based on the first season in the NBA, what is the players expected career length as defined by minutes played. Minutes played is a good benchmark for both contracts, but also accounts for skill atrophy within a contract. 
+
+The variables of interest will be player statistics after their first year. We will consider both traditional statistics like points, assists, and rebounds, and more modern statistics like expected field goal percentage. A previous post showed how to pull draft position. We will also use draft position. Finally, we will test whether the first team a player plays on influences the length of their career.
+
+After pulling each of the players season, we standardize all numeric variables. Andrew Gelman has a post about this [here] (https://statmodeling.stat.columbia.edu/2009/07/11/when_to_standar/). In short, when comparing predictors within models, it is very useful to standardize the predictor variables as it allows us to look to see which predictors are the most predictive. To standardize variables in `R`, we use the function `scale`. 
+
+```{r Controls}
+
+
+AnalyticDS = AllPlayers %>% 
+  group_by(link) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  rename(FirstSeasonMP = mp) %>% 
+  inner_join(Minutes %>% 
+               select(link, mp, games, games_started, NumberOfSeasons, status,
+                      LastSeason = season ), 
+             by = "link") %>% 
+  left_join(dget("Data/DraftData") ,  
+            by = c("player" = "PlayerName")) %>% 
+  distinct(link, .keep_all = TRUE) %>% 
+  mutate(PickNumber = ifelse(is.na(PickNumber), "61" , PickNumber),
+         tm = case_when(tm == "WSB" ~ "WAS",
+                        tm == "VAN" ~ "MEM",
+                        tm == "SEA" ~ "OKC",
+                        tm %in% c("CHH", "NOH", "NOK") ~ "CHA",
+                        TRUE ~ tm)) %>% 
+  left_join( dget("Data/SeasonDataSet") %>% 
+               distinct(season, Acronym, .keep_all = TRUE) %>% 
+               select(season, Acronym, wprev, w_lpercentprev, wcur, w_lpercentcur), 
+             by = c("season" = "season",
+                    "tm" = "Acronym") )
+                        
+
+```
+
+
+## Lasso method: 
+
+To run the `glmnet` function, we need to create a matrix. We need the categorical variables to be dummies. 
+
+
+```{r CreateDataSet}
+
+
+AnalyticDS2 = AnalyticDS %>% 
+  filter(mp >0 ) %>% 
+  select(mp, status, age, FirstSeasonMP, fg, fga, ftpercent,FirstSeasonMP, PickNumber, fga, 
+         x3p, x3pa, x3ppercent ,x2p,x2pa, x2ppercent, FirstTeam= tm,
+         fgpercent, ft, fta, efgpercent, orb, drb, trb, ast, stl, blk, tov, pts,
+         wprev, w_lpercentprev,  wcur, w_lpercentcur) %>% 
+  na.omit()
+
+SurvivalFunction <-AnalyticDS2 %>% 
+  select(mp, status)  
+
+ControlVariables = AnalyticDS2 %>% 
+  select(-mp, -status) %>% 
+  mutate_if(is.numeric, ~ scale(.)[,1]) %>%
+  mutate(PickNumber = as.numeric(PickNumber),
+         Dummy = 1) %>%
+  tidyr::spread(FirstTeam, Dummy , fill = 0) %>% 
+  as.matrix()
+  
+SurvMat <-Surv(SurvivalFunction$mp, SurvivalFunction$status)
+
+LassoReg <-glmnet::cv.glmnet(ControlVariables, SurvMat, family="cox", nfolds = 10)
+
+MinLambda = LassoReg$lambda.min
+
+
+```
+
+The plot below shows the lambda on the x-axis, and the partial likelihood deviance on the y axis. The goal is to minimize the partial likelihood deviance. 
+
+```{r lamdaPlt} 
+
+plot(LassoReg)
+
+```
+
+As an exercise, the below code shows how to reproduce the above plot with `ggplot`. 
+
+```{r ggplotV, echo = TRUE}
+
+tibble(Likelihood = LassoReg$cvup,
+       Lambda= LassoReg$lambda ) %>% 
+  mutate(LogLambda = round( log(Lambda) , digits = 0)) %>% 
+  ggplot(., aes(x = LogLambda, y = Likelihood)) +
+  geom_smooth() +
+  theme_classic() +
+  geom_vline(xintercept =  log(LassoReg$lambda.min)) +
+  labs(x = expression("Log"~(lambda)) ,
+                     y = "Partial Likelihood Deviance") 
+      
+```
+
+
+The minimum value of lambda is `r MinLambda`. 
+
+```{r lassoMdl}
+
+MinCoefs = coef(LassoReg, s = "lambda.min")
+Coefs = as.matrix(MinCoefs)
+
+NonZeroCoefs = tibble(VarNm = rownames(MinCoefs),
+                      Coefficients = Coefs[,1]) %>% 
+  filter(Coefficients != 0) %>% 
+  pull(VarNm)
+
+NonZeroCoefs2 = paste(NonZeroCoefs, collapse = "+")
+
+AnalyticDSF = AnalyticDS %>% 
+  filter(mp >0 ) %>% 
+  select(mp, status, age, FirstSeasonMP, fg, fga, ftpercent, 
+         FirstSeasonMP, PickNumber, fga, 
+         fgpercent, ft, fta, efgpercent, orb, drb, trb, ast, stl, blk, tov, pts,
+         x3p, x3pa, x3ppercent ,x2p,x2pa, x2ppercent, FirstTeam= tm,
+         wprev, w_lpercentprev, wcur, w_lpercentcur) %>% 
+  na.omit() %>% 
+  mutate_at(vars(age, FirstSeasonMP, fg, fga, ftpercent,FirstSeasonMP, fga,
+                 fgpercent, ft, fta, efgpercent, orb, drb, trb, ast, stl, blk, tov, pts,
+                 x3p, x3pa, x3ppercent ,x2p,x2pa, x2ppercent,
+         wprev, w_lpercentprev, wcur, w_lpercentcur) ,  ~ scale(.)[,1]) %>%
+  mutate(PickNumber = as.numeric(PickNumber),
+         Dummy = 1) %>%
+  tidyr::spread(FirstTeam, Dummy , fill = 0) 
+  
+LassoCox <- coxph(as.formula(paste0("Surv(AnalyticDSF$mp, AnalyticDSF$status) ~", NonZeroCoefs2)), 
+                 data = AnalyticDSF) 
+
+CStatLasso = concordance(LassoCox)
+
+## Adjusted Model to account for violation of proportional hazard model: 
+GetSchoenfeld = cox.zph(LassoCox)
+
+AdjustedNonZeroCoef = paste(paste(NonZeroCoefs, "*mp"), collapse = "+")
+LassoCoxAdj <- coxph(as.formula(paste0("Surv(AnalyticDSF$mp, AnalyticDSF$status) ~", AdjustedNonZeroCoef)), 
+                 data = AnalyticDSF)
+
+InteractionMP = broom::tidy(LassoCoxAdj) %>% 
+  filter(grepl(":", term) & p.value < .05)
+
+SchoenfeldLassoPlot = GetSchoenfeld$y %>%
+  as_tibble() %>% 
+  bind_cols( tibble(Time = rownames(GetSchoenfeld$y))) %>% 
+  tidyr::gather(Var, Value, -Time) %>% 
+  ggplot(.,  aes(x = as.numeric(Time), y = Value)) +
+  geom_point() +
+  geom_smooth() +
+  theme_classic() +
+  scale_x_continuous(labels = scales::comma) +
+  facet_wrap(~Var, scales = "free") +
+  labs(x = "Time", y = "Beta(t)")
+
+FinalLassoCoefs = paste(paste( InteractionMP %>% pull(term), collapse = "+"), "+", 
+      paste(NonZeroCoefs , collapse = "+") )
+
+FinalCoxModel = broom::tidy(
+  coxph(as.formula(paste0("Surv(AnalyticDSF$mp, AnalyticDSF$status) ~", FinalLassoCoefs)), 
+                 data = AnalyticDSF)
+  )
+
+```
+
+
+## Using Institutional Knowledge
+
+Institutional knowledge models use expertise and literature to develop a model. In this case, we will use expertise from NBA experts to develop a model. 
+
+The model will use the following predictors:   
+  
+1.  Age - the younger a player, the longer they have to develop, and the longer their peak performance may be.  
+2.  Five year average of win-loss rate of first team. The theory is that better teams are more sound decision makers. 
+3.  Free throw percentages: a free throw percentage is a very good predictor for young players, as it shows their innate shooting skills. 
+4.  Free throw attempts: players who are able to get free throws can generate efficient offense. 
+5.  Effective Field Goal Percent: This just shows how efficient a basketball player is. 
+6.  Draft position -- the higher a draft position, the better a given player is perceived to be by experts. 
+7.  Blocks and steals are very crude metric of defensive ability. f
+8.  Points - simply because players with more points may be able to play longer because of reputation. 
+
+The team was excluded from this analysis. Team management changes over time, and the 5-year moving average of their win percentage is a better reflection of the organization of the team, then just the dummy variable of team. 
+
+```{r inst}
+
+InstSurve = coxph(Surv(AnalyticDSF$mp, AnalyticDSF$status) ~ 
+                    age + PickNumber + FirstSeasonMP + ft + blk + stl +fta + w_lpercentcur + pts, 
+                  data = AnalyticDSF)
+
+
+#### Prop hazard:
+PropSurve = coxph(Surv(AnalyticDSF$mp, AnalyticDSF$status) ~ 
+                    age *mp + PickNumber*mp + FirstSeasonMP*mp + ft*mp + blk*mp + 
+                    stl*mp +fta*mp + w_lpercentcur*mp + pts*mp, 
+                  data = AnalyticDSF)
+
+InteractionMP2 = broom::tidy(PropSurve) %>% 
+  filter(grepl(":", term) & p.value < .05)
+
+InstFnl = coxph(Surv(AnalyticDSF$mp, AnalyticDSF$status) ~ 
+                    age + PickNumber + FirstSeasonMP + ft*mp + blk*mp + 
+                    stl +fta*mp + w_lpercentcur + pts, data = AnalyticDSF) 
+
+GetSchoenfeldInst = cox.zph(InstSurve)
+
+SchoenfeldInstPlot = GetSchoenfeldInst$y %>%
+  as_tibble() %>% 
+  bind_cols( tibble(Time = rownames(GetSchoenfeldInst$y))) %>% 
+  tidyr::gather(Var, Value, -Time) %>% 
+  ggplot(.,  aes(x = as.numeric(Time), y = Value)) +
+  geom_point() +
+  geom_smooth() +
+  theme_classic() +
+  scale_x_continuous(labels = scales::comma) +
+  facet_wrap(~Var, scales = "free") +
+  labs(x = "Time", y = "Beta(t)")
+
+
+```
+
+
+## Proportional Hazard Assumption
+
+A key assumption in a Cox Proportional Hazard model is that that the proportional. This assumption simply states that the ratio of hazards must be constant over time. To check whether this assumption hols, we do two things:
+
+1.  Check whether the interaction between time (minutes in our case) and the predictors are statistically significant. 
+
+For the Lasso model, there are two predictors which do not meet the proportional hazard assumption: 
+
+For the institutional model, there are three predictors which do not meet the proportional hazard assumptions. 
+
+
+```{r prophztbl}
+
+bind_rows(InteractionMP %>% mutate(model = "Lasso"),
+          InteractionMP2 %>% mutate(model = "Institutional") ) %>% 
+  select(term, model , estimate, p.value) %>% 
+  mutate(Result = paste0( round(estimate, digits = 5), " (", format.pval(p.value), ")")) %>%
+  select(term, model, Result) %>% 
+  tidyr::spread(model, Result, fill = "-") %>% 
+  gt() %>%
+  tab_header(
+    title = "Proportional Hazard Table") %>% 
+  tab_spanner(
+    label = "Model",
+    columns = vars(Institutional, Lasso)
+  )
+
+```
+
+2. Show the model's Schoenfeld residuals plotted against time, or in this case, minutes played. 
+
+```{r SchoenfeldPlts }
+
+
+SchoenfeldLassoPlot
+
+```
+ 
+The above plot shows the Schoenfeld residuals against time for the Lasso model, and below is the plot shows the Schoenfeld residuals against time for the Institutional model. 
+
+
+```{r PltInstProHZ}
+
+SchoenfeldInstPlot
+
+```
+
+
+## Picking a model:
+
+Survival models do not have provide a prediction the same way a logistic model. Comparing models based on prediction accuracy is not as viable. 
+
+There is no perfect model to evaluate survival models. To evaluate the two models, we will follow this [post](https://stats.stackexchange.com/questions/254873/comparing-cox-proportional-hazards-models-aic). We will take 100 bootstraps, and calculate the AIC for each of the models. We then compare the median AIC for both models based on the 100 bootstraps. 
+
+```{r evaluate, results = 'hide', cache=TRUE}
+
+set.seed(4321)
+
+EvalLasso = rsample::bootstraps(AnalyticDSF, 10) %>% 
+  mutate(LassoCoxMdl = purrr::map(splits, ~ coxph(
+    as.formula(paste0("Surv(AnalyticDSF$mp, AnalyticDSF$status) ~", FinalLassoCoefs)), 
+                 data = .x)),
+    LassoLR = purrr::map(LassoCoxMdl, ~ broom::glance(.x) %>% 
+                      select(Lasso_concordance = concordance, Lasso_AIC = AIC, Lasso_logLik = logLik)),
+    InstMdl = purrr::map(splits, ~ coxph(Surv(AnalyticDSF$mp, AnalyticDSF$status) ~ 
+                    age + PickNumber + FirstSeasonMP + ft*mp + blk*mp + 
+                    stl +fta*mp + w_lpercentcur + pts, data = .x)),
+    InstLR = purrr::map(InstMdl,~broom::glance(.x) %>% 
+                      select(Inst_concordance = concordance, Inst_AIC = AIC, 
+                             Inst_logLik = logLik)) ) %>% 
+  tidyr::unnest(LassoLR, InstLR) 
+
+```
+
+Below is the plot of the 100 bootstraps. As we can see, the institutional model has a lower mean AIC value. Based on this limited exercise, this shows the value even limited knowledge of a field can have in model selection. 
+
+
+```{r EvalPlot}
+
+DFPltEval = EvalLasso %>%  
+  tidyr::pivot_longer(
+   cols = contains("_"),
+   names_to = "Metric_a",
+   values_to = "Vals"
+ ) %>% 
+  tidyr::separate(Metric_a, into = c("Model", "Metric"), sep = "_") %>% 
+  filter(Metric == "AIC")
+
+PltEval = DFPltEval %>% 
+  ggplot(., aes(x = Vals, color = Model)) +
+  geom_density() +
+  theme_classic() +  labs(x = "Value", y = "" ) +
+  geom_vline(xintercept = DFPltEval %>% 
+               filter(Model == "Inst") %>% 
+               summarise(Mn = median(Vals)) %>% 
+               pull(Mn),color = "red" ) +
+  geom_vline(xintercept = DFPltEval %>% 
+               filter(Model == "Lasso") %>% summarise(Mn = median(Vals)) %>% 
+               pull(Mn), color = "blue" ) +
+  theme(legend.position = "bottom")
+
+PltEval
+
+```
+
+## Final Model
+
+The hazard ratios, and their confidence intervals an be found below: 
+
+```{r HRPlt}
+
+HazardRatio = summary(InstFnl)$conf.int
+
+HazardRatioPlt = HazardRatio %>%
+  as_tibble() %>% 
+  mutate(Term = rownames(HazardRatio) %>% 
+           forcats::fct_reorder(., desc(`exp(coef)`))) %>% 
+  filter(grepl("mp:|:mp", Term) == FALSE & Term != "mp") %>% 
+  ggplot(.,aes(x = `exp(coef)`, y = Term)) +
+  geom_errorbar(width=.1, aes(xmin=`lower .95`, xmax=`upper .95`)) +
+  geom_point(shape=4, size=.5, fill="white") +
+  geom_vline(xintercept = 1) +
+  theme_classic()
+
+HazardRatioPlt
+
+```
+
+There are only two terms where the 95% confidence intervals do not include one. 
+
+First, an increase of one standard deviations of free throws is associated with a `r scales::percent( 1.2374 - 1 )` increase in minutes played after adjusting for the other predictors.
+
+Second, an increase of on standard deviations of free throw attempts is associated with a `r scales::percent(abs(.740148 - 1))` decrease in minutes played after adjusting for other predictors. 
+
+## Limitations:
+
+This is obviously a short blog post on this topic. There is no information on contracts, player earnings, injuries, all of which are much clearer determinants of minutes played in a career than any of the predictors used. 
+
+Furthermore, this is not a predictive model. This model is a descriptive model which attempts to understand what factors best explain why players who played during the era of 2003 to 2010 played as many minutes as they did over the course of their career. 
